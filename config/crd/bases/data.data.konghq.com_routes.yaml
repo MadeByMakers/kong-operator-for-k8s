@@ -1,0 +1,117 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.7.0
+  creationTimestamp: null
+  name: routes.data.data.konghq.com
+spec:
+  group: data.data.konghq.com
+  names:
+    kind: Route
+    listKind: RouteList
+    plural: routes
+    singular: route
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Route is the Schema for the routes API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: RouteSpec defines the desired state of Route
+            properties:
+              destinations:
+                items:
+                  type: string
+                type: array
+              headers:
+                additionalProperties:
+                  type: string
+                type: object
+              hosts:
+                items:
+                  type: string
+                type: array
+              https_redirect_status_code:
+                type: integer
+              id:
+                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                  Important: Run "make" to regenerate code after modifying this file'
+                type: string
+              methods:
+                items:
+                  type: string
+                type: array
+              name:
+                type: string
+              path_handling:
+                type: string
+              paths:
+                items:
+                  type: string
+                type: array
+              preserve_host:
+                type: boolean
+              protocols:
+                items:
+                  type: string
+                type: array
+              regex_priority:
+                type: integer
+              snis:
+                items:
+                  type: string
+                type: array
+              split_path:
+                type: boolean
+              tags:
+                items:
+                  type: string
+                type: array
+            type: object
+          status:
+            description: RouteStatus defines the observed state of Route
+            properties:
+              message:
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file'
+                type: string
+              response:
+                properties:
+                  body:
+                    type: string
+                  code:
+                    description: 'INSERT ADDITIONAL STATUS FIELD - define observed
+                      state of cluster Important: Run "make" to regenerate code after
+                      modifying this file'
+                    type: integer
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

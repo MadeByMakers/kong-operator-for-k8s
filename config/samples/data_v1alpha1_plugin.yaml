@@ -1,0 +1,6 @@
+apiVersion: data.data.konghq.com/v1alpha1
+kind: Plugin
+metadata:
+  name: plugin-sample
+spec:
+  # TODO(user): Add fields here

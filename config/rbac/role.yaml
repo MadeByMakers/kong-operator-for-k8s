@@ -1,0 +1,86 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - data.data.konghq.com
+  resources:
+  - plugins
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - data.data.konghq.com
+  resources:
+  - plugins/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - data.data.konghq.com
+  resources:
+  - plugins/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - data.data.konghq.com
+  resources:
+  - routes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - data.data.konghq.com
+  resources:
+  - routes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - data.data.konghq.com
+  resources:
+  - routes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - data.data.konghq.com
+  resources:
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - data.data.konghq.com
+  resources:
+  - services/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - data.data.konghq.com
+  resources:
+  - services/status
+  verbs:
+  - get
+  - patch
+  - update
