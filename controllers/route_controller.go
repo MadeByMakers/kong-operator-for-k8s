@@ -19,18 +19,18 @@ package controllers
 import (
 	"context"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	datav1alpha1 "github.com/MadeByMakers/kong-operator-for-k8s/api/v1alpha1"
+	"github.com/go-logr/logr"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 )
 
 // RouteReconciler reconciles a Route object
 type RouteReconciler struct {
-	client.Client
-	Scheme *runtime.Scheme
+	util.ReconcilerBase
+	Log logr.Logger
 }
 
 //+kubebuilder:rbac:groups=data.data.konghq.com,resources=routes,verbs=get;list;watch;create;update;patch;delete

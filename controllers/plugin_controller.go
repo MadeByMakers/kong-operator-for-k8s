@@ -18,22 +18,26 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"errors"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/go-logr/logr"
+	"github.com/redhat-cop/operator-utils/pkg/util"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	datav1alpha1 "github.com/MadeByMakers/kong-operator-for-k8s/api/v1alpha1"
-	util "github.com/MadeByMakers/kong-operator-for-k8s/util"
+	pluginDAO "github.com/MadeByMakers/kong-operator-for-k8s/dao/pluginDao"
 )
+
+const controllerName = "PluginController"
 
 // PluginReconciler reconciles a Plugin object
 type PluginReconciler struct {
-	client.Client
+	util.ReconcilerBase
+	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 
@@ -50,44 +54,112 @@ type PluginReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
-func (r *PluginReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.Log.WithValues("memcached", req.NamespacedName)
-	logger.Info("Reconciling Memcached")
+func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := r.Log.WithValues("Plugin", req.NamespacedName)
 
-	plugin := &datav1alpha1.Plugin{}
-	err := r.Get(ctx, req.NamespacedName, plugin)
+	instance := &datav1alpha1.Plugin{}
+	err := r.GetClient().Get(context, req.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			logger.Info("Memcached resource not found. Ignoring since object must be deleted.")
+			log.Info("Memcached resource not found. Ignoring since object must be deleted.")
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		logger.Error(err, "Failed to get Memcached.")
+		log.Error(err, "Failed to get Memcached.")
 		return ctrl.Result{}, err
 	}
 
-	var bodyBytes []byte
-
-	// DELETE
-	if plugin.GetDeletionTimestamp() != nil {
-		bodyBytes = util.DoDelete("https://kong-kong-admin.kong.svc:8444/plugin/" + plugin.Spec.Id)
-	} else if plugin.Spec.Id != "" {
-		bodyBytes = util.DoPost("https://kong-kong-admin.kong.svc:8444/plugin", plugin.Spec)
-	} else {
-		bodyBytes = util.DoPut("https://kong-kong-admin.kong.svc:8444/plugin", plugin.Spec)
+	if ok, err := r.IsValid(instance); !ok {
+		return r.ManageError(context, instance, err)
 	}
 
-	var responseObject datav1alpha1.PluginSpec
-	json.Unmarshal(bodyBytes, &responseObject)
+	if ok := r.IsInitialized(instance); !ok {
+		err := r.GetClient().Update(context, instance)
+		if err != nil {
+			log.Error(err, "unable to update instance", "instance", instance)
+			return r.ManageError(context, instance, err)
+		}
+		return reconcile.Result{}, nil
+	}
 
-	r.Status().Update(ctx, plugin)
+	if util.IsBeingDeleted(instance) {
+		if !util.HasFinalizer(instance, controllerName) {
+			return reconcile.Result{}, nil
+		}
+		err := r.manageCleanUpLogic(instance)
+		if err != nil {
+			log.Error(err, "unable to delete instance", "instance", instance)
+			return r.ManageError(context, instance, err)
+		}
+		util.RemoveFinalizer(instance, controllerName)
+		err = r.GetClient().Update(context, instance)
+		if err != nil {
+			log.Error(err, "unable to update instance", "instance", instance)
+			return r.ManageError(context, instance, err)
+		}
+		return reconcile.Result{}, nil
+	}
 
-	fmt.Printf("API Response as struct %+v\n", responseObject)
+	err = r.manageOperatorLogic(instance)
+	if err != nil {
+		return r.ManageError(context, instance, err)
+	}
+	return r.ManageSuccess(context, instance)
+}
 
-	return ctrl.Result{}, nil
+func (r *PluginReconciler) IsInitialized(obj metav1.Object) bool {
+	instance, ok := obj.(*datav1alpha1.Plugin)
+	if !ok {
+		return false
+	}
+	if instance.Spec.Id != "" {
+		return true
+	}
+	util.AddFinalizer(instance, controllerName)
+	instance.Spec.Id = "123"
+	return false
+
+}
+
+func (r *PluginReconciler) IsValid(obj metav1.Object) (bool, error) {
+	instance, ok := obj.(*datav1alpha1.Plugin)
+	if !ok {
+		return false, errors.New("not a mycrd object")
+	}
+	if instance.Spec.Id != "" {
+		return true, nil
+	}
+	return false, errors.New("not valid because blah blah")
+}
+
+func (r *PluginReconciler) manageCleanUpLogic(instance *datav1alpha1.Plugin) error {
+	return nil
+}
+
+func (r *PluginReconciler) manageOperatorLogic(instance *datav1alpha1.Plugin) error {
+	var response datav1alpha1.Plugin
+
+	// DELETE
+	if instance.GetDeletionTimestamp() != nil {
+		response = pluginDAO.Delete(*instance)
+
+	} else if instance.Spec.Id != "" {
+		response = pluginDAO.Update(*instance)
+	} else {
+		response = pluginDAO.Create(*instance)
+	}
+
+	if &response != instance {
+
+	}
+
+	if instance.Spec.Id != "" {
+		return errors.New("error because blah blah")
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

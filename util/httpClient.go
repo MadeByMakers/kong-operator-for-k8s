@@ -1,45 +1,28 @@
-package util
+package httpClient
 
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 )
 
-func DoDelete(url string) []byte {
-
-	request, error := http.NewRequest("DELETE", url, nil)
-	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-
-	client := &http.Client{}
-	response, error := client.Do(request)
-	if error != nil {
-		panic(error)
-	}
-	defer response.Body.Close()
-
-	fmt.Println("response Status:", response.Status)
-	fmt.Println("response Headers:", response.Header)
-
-	bodyBytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		fmt.Print(err.Error())
-
-		panic(err)
-	}
-
-	fmt.Println("response Body:", string(bodyBytes))
-	return bodyBytes
+func GetBaseURL() string {
+	return "https://soap.entel.cl/api/kong/plugins"
 }
 
-func DoPost(url string, body interface{}) []byte {
+func doRequest(method string, url string, data interface{}) (int, []byte) {
 
-	jsonData := new(bytes.Buffer)
-	json.NewEncoder(jsonData).Encode(body)
+	var body io.Reader = nil
 
-	request, error := http.NewRequest("POST", url, jsonData)
+	if data != nil {
+		jsonData := new(bytes.Buffer)
+		json.NewEncoder(jsonData).Encode(data)
+		body = jsonData
+	}
+
+	request, error := http.NewRequest(method, url, body)
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
 	client := &http.Client{}
@@ -47,47 +30,32 @@ func DoPost(url string, body interface{}) []byte {
 	if error != nil {
 		panic(error)
 	}
+
 	defer response.Body.Close()
-
-	fmt.Println("response Status:", response.Status)
-	fmt.Println("response Headers:", response.Header)
-
 	bodyBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		fmt.Print(err.Error())
-
 		panic(err)
 	}
 
-	fmt.Println("response Body:", string(bodyBytes))
-	return bodyBytes
+	return response.StatusCode, bodyBytes
 }
 
-func DoPut(url string, body interface{}) []byte {
+func Delete(url string) (int, []byte) {
+	return doRequest("DELETE", url, nil)
+}
 
-	jsonData := new(bytes.Buffer)
-	json.NewEncoder(jsonData).Encode(body)
+func Post(url string, data interface{}) (int, []byte) {
+	return doRequest("POST", url, data)
+}
 
-	request, error := http.NewRequest("PUT", url, jsonData)
-	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+func Put(url string, data interface{}) (int, []byte) {
+	return doRequest("PUT", url, data)
+}
 
-	client := &http.Client{}
-	response, error := client.Do(request)
-	if error != nil {
-		panic(error)
-	}
-	defer response.Body.Close()
+func Patch(url string, data interface{}) (int, []byte) {
+	return doRequest("PATCH", url, data)
+}
 
-	fmt.Println("response Status:", response.Status)
-	fmt.Println("response Headers:", response.Header)
-
-	bodyBytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		fmt.Print(err.Error())
-
-		panic(err)
-	}
-
-	fmt.Println("response Body:", string(bodyBytes))
-	return bodyBytes
+func Get(url string) (int, []byte) {
+	return doRequest("GET", url, nil)
 }

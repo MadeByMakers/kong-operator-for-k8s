@@ -33,6 +33,7 @@ import (
 
 	datav1alpha1 "github.com/MadeByMakers/kong-operator-for-k8s/api/v1alpha1"
 	"github.com/MadeByMakers/kong-operator-for-k8s/controllers"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -66,12 +67,13 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "b0d3b6bb.data.konghq.com",
+		Scheme:                     scheme,
+		MetricsBindAddress:         metricsAddr,
+		Port:                       9443,
+		HealthProbeBindAddress:     probeAddr,
+		LeaderElection:             enableLeaderElection,
+		LeaderElectionID:           "b0d3b6bb.data.konghq.com",
+		LeaderElectionResourceLock: "configmaps",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -79,22 +81,22 @@ func main() {
 	}
 
 	if err = (&controllers.ServiceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		ReconcilerBase: util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor("ServiceController"), mgr.GetAPIReader()),
+		Log:            ctrl.Log.WithName("controllers").WithName("Service"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Service")
 		os.Exit(1)
 	}
 	if err = (&controllers.RouteReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		ReconcilerBase: util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor("RouteController"), mgr.GetAPIReader()),
+		Log:            ctrl.Log.WithName("controllers").WithName("Route"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Route")
 		os.Exit(1)
 	}
 	if err = (&controllers.PluginReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		ReconcilerBase: util.NewReconcilerBase(mgr.GetClient(), mgr.GetScheme(), mgr.GetConfig(), mgr.GetEventRecorderFor("PluginController"), mgr.GetAPIReader()),
+		Log:            ctrl.Log.WithName("controllers").WithName("Plugin"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Plugin")
 		os.Exit(1)
