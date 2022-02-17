@@ -3,41 +3,45 @@ package httpClient
 import (
 	"bytes"
 	"encoding/json"
-	"io"
-	"io/ioutil"
-	"net/http"
 )
 
 func GetBaseURL() string {
-	return "https://soap.entel.cl/api/kong/plugins"
+	return "https://soap.entel.cl/api/kong"
 }
 
 func doRequest(method string, url string, data interface{}) (int, []byte) {
 
-	var body io.Reader = nil
+	jsonData := new(bytes.Buffer)
+	json.NewEncoder(jsonData).Encode(data)
 
-	if data != nil {
-		jsonData := new(bytes.Buffer)
-		json.NewEncoder(jsonData).Encode(data)
-		body = jsonData
-	}
+	return 200, jsonData.Bytes()
 
-	request, error := http.NewRequest(method, url, body)
-	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	/*
+		var body io.Reader = nil
 
-	client := &http.Client{}
-	response, error := client.Do(request)
-	if error != nil {
-		panic(error)
-	}
+		if data != nil {
+			jsonData := new(bytes.Buffer)
+			json.NewEncoder(jsonData).Encode(data)
+			body = jsonData
+		}
 
-	defer response.Body.Close()
-	bodyBytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		panic(err)
-	}
+		request, error := http.NewRequest(method, url, body)
+		request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-	return response.StatusCode, bodyBytes
+		client := &http.Client{}
+		response, error := client.Do(request)
+		if error != nil {
+			panic(error)
+		}
+
+		defer response.Body.Close()
+		bodyBytes, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			panic(err)
+		}
+
+		return response.StatusCode, bodyBytes
+	*/
 }
 
 func Delete(url string) (int, []byte) {

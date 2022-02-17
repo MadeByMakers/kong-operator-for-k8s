@@ -24,21 +24,18 @@ import (
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	datav1alpha1 "github.com/MadeByMakers/kong-operator-for-k8s/api/v1alpha1"
-	pluginDAO "github.com/MadeByMakers/kong-operator-for-k8s/dao/pluginDao"
+	daopackage "github.com/MadeByMakers/kong-operator-for-k8s/dao"
 )
-
-const controllerName = "PluginController"
 
 // PluginReconciler reconciles a Plugin object
 type PluginReconciler struct {
 	util.ReconcilerBase
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log logr.Logger
+	Dao daopackage.PluginDAO
 }
 
 //+kubebuilder:rbac:groups=data.data.konghq.com,resources=plugins,verbs=get;list;watch;create;update;patch;delete
@@ -55,7 +52,9 @@ type PluginReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) (ctrl.Result, error) {
+	const controllerName = "PluginController"
 	log := r.Log.WithValues("Plugin", req.NamespacedName)
+	r.Dao = daopackage.PluginDAO{}
 
 	instance := &datav1alpha1.Plugin{}
 	err := r.GetClient().Get(context, req.NamespacedName, instance)
@@ -64,7 +63,7 @@ func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) 
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			log.Info("Memcached resource not found. Ignoring since object must be deleted.")
+			log.Info("Plugin resource not found. Ignoring since object must be deleted.")
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -74,15 +73,6 @@ func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) 
 
 	if ok, err := r.IsValid(instance); !ok {
 		return r.ManageError(context, instance, err)
-	}
-
-	if ok := r.IsInitialized(instance); !ok {
-		err := r.GetClient().Update(context, instance)
-		if err != nil {
-			log.Error(err, "unable to update instance", "instance", instance)
-			return r.ManageError(context, instance, err)
-		}
-		return reconcile.Result{}, nil
 	}
 
 	if util.IsBeingDeleted(instance) {
@@ -103,63 +93,16 @@ func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) 
 		return reconcile.Result{}, nil
 	}
 
-	err = r.manageOperatorLogic(instance)
+	err, result := r.manageOperatorLogic(instance)
 	if err != nil {
 		return r.ManageError(context, instance, err)
 	}
+
+	if result != nil {
+		r.GetClient().Update(context, result)
+	}
+
 	return r.ManageSuccess(context, instance)
-}
-
-func (r *PluginReconciler) IsInitialized(obj metav1.Object) bool {
-	instance, ok := obj.(*datav1alpha1.Plugin)
-	if !ok {
-		return false
-	}
-	if instance.Spec.Id != "" {
-		return true
-	}
-	util.AddFinalizer(instance, controllerName)
-	instance.Spec.Id = "123"
-	return false
-
-}
-
-func (r *PluginReconciler) IsValid(obj metav1.Object) (bool, error) {
-	instance, ok := obj.(*datav1alpha1.Plugin)
-	if !ok {
-		return false, errors.New("not a mycrd object")
-	}
-	if instance.Spec.Id != "" {
-		return true, nil
-	}
-	return false, errors.New("not valid because blah blah")
-}
-
-func (r *PluginReconciler) manageCleanUpLogic(instance *datav1alpha1.Plugin) error {
-	return nil
-}
-
-func (r *PluginReconciler) manageOperatorLogic(instance *datav1alpha1.Plugin) error {
-	var response datav1alpha1.Plugin
-
-	// DELETE
-	if instance.GetDeletionTimestamp() != nil {
-		response = pluginDAO.Delete(*instance)
-
-	} else if instance.Spec.Id != "" {
-		response = pluginDAO.Update(*instance)
-	} else {
-		response = pluginDAO.Create(*instance)
-	}
-
-	if &response != instance {
-
-	}
-
-	if instance.Spec.Id != "" {
-		return errors.New("error because blah blah")
-	}
-	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -167,4 +110,50 @@ func (r *PluginReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&datav1alpha1.Plugin{}).
 		Complete(r)
+}
+
+func (r *PluginReconciler) IsValid(obj metav1.Object) (bool, error) {
+	instance, ok := obj.(*datav1alpha1.Plugin)
+	if !ok {
+		return false, errors.New("not a Plugin object")
+	}
+
+	if instance.Spec.Name == "" {
+		return false, errors.New("'name' cannot be empty")
+	}
+
+	if instance.Spec.Config == "" {
+		return false, errors.New("'config' cannot be empty")
+	}
+
+	return true, nil
+}
+
+func (r *PluginReconciler) manageCleanUpLogic(instance *datav1alpha1.Plugin) error {
+	response := r.Dao.Delete(*instance)
+
+	if response.Status.Code == 200 {
+		return errors.New(response.Status.Message)
+	}
+
+	return nil
+}
+
+func (r *PluginReconciler) manageOperatorLogic(instance *datav1alpha1.Plugin) (error, *datav1alpha1.Plugin) {
+	var response datav1alpha1.Plugin
+
+	// DELETE
+	if instance.GetDeletionTimestamp() != nil {
+		return r.manageCleanUpLogic(instance), nil
+	} else if instance.Spec.Id != "" {
+		response = r.Dao.Update(*instance)
+	} else {
+		response = r.Dao.Create(*instance)
+	}
+
+	if response.Status.Code != 200 {
+		return errors.New(response.Status.Message), nil
+	}
+
+	return nil, &response
 }

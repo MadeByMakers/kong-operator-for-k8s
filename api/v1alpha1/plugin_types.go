@@ -46,6 +46,7 @@ type PluginSpec struct {
 type PluginStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Code     int        `json:"code,omitempty"`
 	Message  string     `json:"message,omitempty"`
 	Response HttpStatus `json:"response,omitempty"`
 }

@@ -1,4 +1,4 @@
-package pluginDAO
+package dao
 
 import (
 	"encoding/json"
@@ -8,23 +8,25 @@ import (
 	httpClient "github.com/MadeByMakers/kong-operator-for-k8s/util"
 )
 
-func Create(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
-	status, response := httpClient.Post(httpClient.GetBaseURL()+"/plugins", plugin.Spec)
+type RouteDAO struct{}
+
+func (this RouteDAO) Create(route datav1alpha1.Route) datav1alpha1.Route {
+	status, response := httpClient.Post(httpClient.GetBaseURL()+"/routes", route.Spec)
 
 	// OK
 	if status == 201 {
-		var returnValue datav1alpha1.PluginSpec
+		var returnValue datav1alpha1.RouteSpec
 		json.Unmarshal(response, &returnValue)
 
-		plugin.Spec = returnValue
-		plugin.Status = datav1alpha1.PluginStatus{
+		route.Spec = returnValue
+		route.Status = datav1alpha1.RouteStatus{
 			Message: "OK",
 		}
 	} else {
 		var stringValue string
 		json.Unmarshal(response, &stringValue)
 
-		plugin.Status = datav1alpha1.PluginStatus{
+		route.Status = datav1alpha1.RouteStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
@@ -33,22 +35,22 @@ func Create(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
 		}
 	}
 
-	return plugin
+	return route
 }
 
-func Delete(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
-	status, response := httpClient.Delete(httpClient.GetBaseURL() + "/plugins/" + plugin.Spec.Id)
+func (this RouteDAO) Delete(route datav1alpha1.Route) datav1alpha1.Route {
+	status, response := httpClient.Delete(httpClient.GetBaseURL() + "/routes/" + route.Spec.Id)
 
 	// OK
 	if status == 204 {
-		plugin.Status = datav1alpha1.PluginStatus{
+		route.Status = datav1alpha1.RouteStatus{
 			Message: "DELETED",
 		}
 	} else {
 		var stringValue string
 		json.Unmarshal(response, &stringValue)
 
-		plugin.Status = datav1alpha1.PluginStatus{
+		route.Status = datav1alpha1.RouteStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
@@ -57,26 +59,26 @@ func Delete(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
 		}
 	}
 
-	return plugin
+	return route
 }
 
-func Update(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
-	status, response := httpClient.Patch(httpClient.GetBaseURL()+"/plugins", plugin.Spec)
+func (this RouteDAO) Update(route datav1alpha1.Route) datav1alpha1.Route {
+	status, response := httpClient.Patch(httpClient.GetBaseURL()+"/routes", route.Spec)
 
 	// OK
 	if status == 200 {
-		var returnValue datav1alpha1.PluginSpec
+		var returnValue datav1alpha1.RouteSpec
 		json.Unmarshal(response, &returnValue)
 
-		plugin.Spec = returnValue
-		plugin.Status = datav1alpha1.PluginStatus{
+		route.Spec = returnValue
+		route.Status = datav1alpha1.RouteStatus{
 			Message: "OK",
 		}
 	} else {
 		var stringValue string
 		json.Unmarshal(response, &stringValue)
 
-		plugin.Status = datav1alpha1.PluginStatus{
+		route.Status = datav1alpha1.RouteStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
@@ -85,15 +87,15 @@ func Update(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
 		}
 	}
 
-	return plugin
+	return route
 }
 
-func Get(nameOrId string) *datav1alpha1.PluginSpec {
-	status, response := httpClient.Get(httpClient.GetBaseURL() + "/plugins/" + nameOrId)
+func (this RouteDAO) Get(nameOrId string) *datav1alpha1.RouteSpec {
+	status, response := httpClient.Get(httpClient.GetBaseURL() + "/routes/" + nameOrId)
 
 	// OK
 	if status == 200 {
-		var returnValue datav1alpha1.PluginSpec
+		var returnValue datav1alpha1.RouteSpec
 		json.Unmarshal(response, &returnValue)
 		return &returnValue
 	} else {
@@ -104,12 +106,12 @@ func Get(nameOrId string) *datav1alpha1.PluginSpec {
 	return nil
 }
 
-func GetAll() []datav1alpha1.PluginSpec {
-	status, response := httpClient.Get(httpClient.GetBaseURL() + "/plugins/")
+func (this RouteDAO) GetAll() []datav1alpha1.RouteSpec {
+	status, response := httpClient.Get(httpClient.GetBaseURL() + "/routes/")
 
 	// OK
 	if status == 200 {
-		var returnValue []datav1alpha1.PluginSpec
+		var returnValue []datav1alpha1.RouteSpec
 		json.Unmarshal(response, &returnValue)
 		return returnValue
 	} else {

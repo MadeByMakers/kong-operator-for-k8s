@@ -18,11 +18,15 @@ package controllers
 
 import (
 	"context"
+	"errors"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	datav1alpha1 "github.com/MadeByMakers/kong-operator-for-k8s/api/v1alpha1"
+	daopackage "github.com/MadeByMakers/kong-operator-for-k8s/dao"
 	"github.com/go-logr/logr"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 )
@@ -31,6 +35,7 @@ import (
 type RouteReconciler struct {
 	util.ReconcilerBase
 	Log logr.Logger
+	Dao daopackage.RouteDAO
 }
 
 //+kubebuilder:rbac:groups=data.data.konghq.com,resources=routes,verbs=get;list;watch;create;update;patch;delete
@@ -46,19 +51,58 @@ type RouteReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
-func (r *RouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+func (r *RouteReconciler) Reconcile(context context.Context, req ctrl.Request) (ctrl.Result, error) {
+	const controllerName = "RouteController"
+	log := r.Log.WithValues("Route", req.NamespacedName)
+	r.Dao = daopackage.RouteDAO{}
 
-	route := &datav1alpha1.Route{}
-	err := r.Get(ctx, req.NamespacedName, route)
-
-	if err.Error() != "" {
-
+	instance := &datav1alpha1.Route{}
+	err := r.GetClient().Get(context, req.NamespacedName, instance)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			log.Info("Route resource not found. Ignoring since object must be deleted.")
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		log.Error(err, "Failed to get Memcached.")
+		return ctrl.Result{}, err
 	}
 
-	// TODO(user): your logic here
+	if ok, err := r.IsValid(instance); !ok {
+		return r.ManageError(context, instance, err)
+	}
 
-	return ctrl.Result{}, nil
+	if util.IsBeingDeleted(instance) {
+		if !util.HasFinalizer(instance, controllerName) {
+			return reconcile.Result{}, nil
+		}
+		err := r.manageCleanUpLogic(instance)
+		if err != nil {
+			log.Error(err, "unable to delete instance", "instance", instance)
+			return r.ManageError(context, instance, err)
+		}
+		util.RemoveFinalizer(instance, controllerName)
+		err = r.GetClient().Update(context, instance)
+		if err != nil {
+			log.Error(err, "unable to update instance", "instance", instance)
+			return r.ManageError(context, instance, err)
+		}
+		return reconcile.Result{}, nil
+	}
+
+	err, result := r.manageOperatorLogic(instance)
+	if err != nil {
+		return r.ManageError(context, instance, err)
+	}
+
+	if result != nil {
+		r.GetClient().Update(context, result)
+	}
+
+	return r.ManageSuccess(context, instance)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -66,4 +110,46 @@ func (r *RouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&datav1alpha1.Route{}).
 		Complete(r)
+}
+
+func (r *RouteReconciler) IsValid(obj metav1.Object) (bool, error) {
+	instance, ok := obj.(*datav1alpha1.Route)
+	if !ok {
+		return false, errors.New("not a Route object")
+	}
+
+	if instance.Spec.Name == "" {
+		return false, errors.New("'name' cannot be empty")
+	}
+
+	return true, nil
+}
+
+func (r *RouteReconciler) manageCleanUpLogic(instance *datav1alpha1.Route) error {
+	response := r.Dao.Delete(*instance)
+
+	if response.Status.Code == 200 {
+		return errors.New(response.Status.Message)
+	}
+
+	return nil
+}
+
+func (r *RouteReconciler) manageOperatorLogic(instance *datav1alpha1.Route) (error, *datav1alpha1.Route) {
+	var response datav1alpha1.Route
+
+	// DELETE
+	if instance.GetDeletionTimestamp() != nil {
+		return r.manageCleanUpLogic(instance), nil
+	} else if instance.Spec.Id != "" {
+		response = r.Dao.Update(*instance)
+	} else {
+		response = r.Dao.Create(*instance)
+	}
+
+	if response.Status.Code != 200 {
+		return errors.New(response.Status.Message), nil
+	}
+
+	return nil, &response
 }

@@ -1,4 +1,4 @@
-package routeDAO
+package dao
 
 import (
 	"encoding/json"
@@ -8,23 +8,25 @@ import (
 	httpClient "github.com/MadeByMakers/kong-operator-for-k8s/util"
 )
 
-func Create(route datav1alpha1.Route) datav1alpha1.Route {
-	status, response := httpClient.Post(httpClient.GetBaseURL()+"/routes", route.Spec)
+type ServiceDAO struct{}
+
+func (this ServiceDAO) Create(service datav1alpha1.Service) datav1alpha1.Service {
+	status, response := httpClient.Post(httpClient.GetBaseURL()+"/services", service.Spec)
 
 	// OK
 	if status == 201 {
-		var returnValue datav1alpha1.RouteSpec
+		var returnValue datav1alpha1.ServiceSpec
 		json.Unmarshal(response, &returnValue)
 
-		route.Spec = returnValue
-		route.Status = datav1alpha1.RouteStatus{
+		service.Spec = returnValue
+		service.Status = datav1alpha1.ServiceStatus{
 			Message: "OK",
 		}
 	} else {
 		var stringValue string
 		json.Unmarshal(response, &stringValue)
 
-		route.Status = datav1alpha1.RouteStatus{
+		service.Status = datav1alpha1.ServiceStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
@@ -33,22 +35,22 @@ func Create(route datav1alpha1.Route) datav1alpha1.Route {
 		}
 	}
 
-	return route
+	return service
 }
 
-func Delete(route datav1alpha1.Route) datav1alpha1.Route {
-	status, response := httpClient.Delete(httpClient.GetBaseURL() + "/routes/" + route.Spec.Id)
+func (this ServiceDAO) Delete(service datav1alpha1.Service) datav1alpha1.Service {
+	status, response := httpClient.Delete(httpClient.GetBaseURL() + "/services/" + service.Spec.Id)
 
 	// OK
 	if status == 204 {
-		route.Status = datav1alpha1.RouteStatus{
+		service.Status = datav1alpha1.ServiceStatus{
 			Message: "DELETED",
 		}
 	} else {
 		var stringValue string
 		json.Unmarshal(response, &stringValue)
 
-		route.Status = datav1alpha1.RouteStatus{
+		service.Status = datav1alpha1.ServiceStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
@@ -57,26 +59,26 @@ func Delete(route datav1alpha1.Route) datav1alpha1.Route {
 		}
 	}
 
-	return route
+	return service
 }
 
-func Update(route datav1alpha1.Route) datav1alpha1.Route {
-	status, response := httpClient.Patch(httpClient.GetBaseURL()+"/routes", route.Spec)
+func (this ServiceDAO) Update(service datav1alpha1.Service) datav1alpha1.Service {
+	status, response := httpClient.Patch(httpClient.GetBaseURL()+"/services", service.Spec)
 
 	// OK
 	if status == 200 {
-		var returnValue datav1alpha1.RouteSpec
+		var returnValue datav1alpha1.ServiceSpec
 		json.Unmarshal(response, &returnValue)
 
-		route.Spec = returnValue
-		route.Status = datav1alpha1.RouteStatus{
+		service.Spec = returnValue
+		service.Status = datav1alpha1.ServiceStatus{
 			Message: "OK",
 		}
 	} else {
 		var stringValue string
 		json.Unmarshal(response, &stringValue)
 
-		route.Status = datav1alpha1.RouteStatus{
+		service.Status = datav1alpha1.ServiceStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
@@ -85,15 +87,15 @@ func Update(route datav1alpha1.Route) datav1alpha1.Route {
 		}
 	}
 
-	return route
+	return service
 }
 
-func Get(nameOrId string) *datav1alpha1.RouteSpec {
-	status, response := httpClient.Get(httpClient.GetBaseURL() + "/routes/" + nameOrId)
+func (this ServiceDAO) Get(nameOrId string) *datav1alpha1.ServiceSpec {
+	status, response := httpClient.Get(httpClient.GetBaseURL() + "/services/" + nameOrId)
 
 	// OK
 	if status == 200 {
-		var returnValue datav1alpha1.RouteSpec
+		var returnValue datav1alpha1.ServiceSpec
 		json.Unmarshal(response, &returnValue)
 		return &returnValue
 	} else {
@@ -104,12 +106,12 @@ func Get(nameOrId string) *datav1alpha1.RouteSpec {
 	return nil
 }
 
-func GetAll() []datav1alpha1.RouteSpec {
-	status, response := httpClient.Get(httpClient.GetBaseURL() + "/routes/")
+func (this ServiceDAO) GetAll() []datav1alpha1.ServiceSpec {
+	status, response := httpClient.Get(httpClient.GetBaseURL() + "/services/")
 
 	// OK
 	if status == 200 {
-		var returnValue []datav1alpha1.RouteSpec
+		var returnValue []datav1alpha1.ServiceSpec
 		json.Unmarshal(response, &returnValue)
 		return returnValue
 	} else {
