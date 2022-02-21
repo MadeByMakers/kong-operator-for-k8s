@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.7.0
   creationTimestamp: null
-  name: routes.data.data.konghq.com
+  name: routes.data.konghq.com
 spec:
-  group: data.data.konghq.com
+  group: data.konghq.com
   names:
     kind: Route
     listKind: RouteList
@@ -88,10 +88,12 @@ spec:
           status:
             description: RouteStatus defines the observed state of Route
             properties:
-              message:
+              code:
                 description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                   of cluster Important: Run "make" to regenerate code after modifying
                   this file'
+                type: integer
+              message:
                 type: string
               response:
                 properties:

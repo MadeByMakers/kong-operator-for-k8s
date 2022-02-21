@@ -1,4 +1,4 @@
-apiVersion: data.data.konghq.com/v1alpha1
+apiVersion: data.konghq.com/v1alpha1
 kind: Service
 metadata:
   name: service-sample

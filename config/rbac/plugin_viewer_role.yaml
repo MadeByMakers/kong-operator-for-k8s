@@ -5,7 +5,7 @@ metadata:
   name: plugin-viewer-role
 rules:
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - plugins
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - plugins/status
   verbs:
