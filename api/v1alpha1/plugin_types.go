@@ -24,22 +24,23 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 type ObjectId struct {
-	Id string `json:"id,omitempty"`
+	Id   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // PluginSpec defines the desired state of Plugin
 type PluginSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Id        string   `json:"id,omitempty"`
-	Name      string   `json:"name,omitempty"`
-	Config    string   `json:"config,omitempty"`
-	Tags      []string `json:"tags,omitempty"`
-	Route     ObjectId `json:"route,omitempty"`
-	Service   ObjectId `json:"service,omitempty"`
-	Protocols []string `json:"protocols,omitempty"`
-	Consumer  []string `json:"consumer,omitempty"`
-	Enabled   bool     `json:"enabled,omitempty"`
+	Id        string      `json:"id,omitempty"`
+	Name      string      `json:"name,omitempty"`
+	Config    interface{} `json:"config,omitempty"`
+	Tags      []string    `json:"tags,omitempty"`
+	Route     ObjectId    `json:"route,omitempty"`
+	Service   ObjectId    `json:"service,omitempty"`
+	Protocols []string    `json:"protocols,omitempty"`
+	Consumer  []string    `json:"consumer,omitempty"`
+	Enabled   bool        `json:"enabled,omitempty"`
 }
 
 // PluginStatus defines the observed state of Plugin
@@ -49,6 +50,12 @@ type PluginStatus struct {
 	Code     int        `json:"code,omitempty"`
 	Message  string     `json:"message,omitempty"`
 	Response HttpStatus `json:"response,omitempty"`
+
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
 
 //+kubebuilder:object:root=true
@@ -61,6 +68,14 @@ type Plugin struct {
 
 	Spec   PluginSpec   `json:"spec,omitempty"`
 	Status PluginStatus `json:"status,omitempty"`
+}
+
+func (m *Plugin) GetConditions() []metav1.Condition {
+	return m.Status.Conditions
+}
+
+func (m *Plugin) SetConditions(conditions []metav1.Condition) {
+	m.Status.Conditions = conditions
 }
 
 //+kubebuilder:object:root=true

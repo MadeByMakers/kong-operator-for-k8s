@@ -7,7 +7,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - plugins
   verbs:
@@ -19,13 +19,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - plugins/finalizers
   verbs:
   - update
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - plugins/status
   verbs:
@@ -33,7 +33,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - routes
   verbs:
@@ -45,13 +45,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - routes/finalizers
   verbs:
   - update
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - routes/status
   verbs:
@@ -59,7 +59,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - services
   verbs:
@@ -71,13 +71,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - services/finalizers
   verbs:
   - update
 - apiGroups:
-  - data.data.konghq.com
+  - data.konghq.com
   resources:
   - services/status
   verbs:

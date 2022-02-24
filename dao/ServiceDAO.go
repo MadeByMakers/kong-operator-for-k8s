@@ -10,34 +10,6 @@ import (
 
 type ServiceDAO struct{}
 
-func (this ServiceDAO) Create(service datav1alpha1.Service) datav1alpha1.Service {
-	status, response := httpClient.Post(httpClient.GetBaseURL()+"/services", service.Spec)
-
-	// OK
-	if status == 201 {
-		var returnValue datav1alpha1.ServiceSpec
-		json.Unmarshal(response, &returnValue)
-
-		service.Spec = returnValue
-		service.Status = datav1alpha1.ServiceStatus{
-			Message: "OK",
-		}
-	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
-
-		service.Status = datav1alpha1.ServiceStatus{
-			Message: "ERROR (" + strconv.Itoa(status) + ")",
-			Response: datav1alpha1.HttpStatus{
-				Code: status,
-				Body: stringValue,
-			},
-		}
-	}
-
-	return service
-}
-
 func (this ServiceDAO) Delete(service datav1alpha1.Service) datav1alpha1.Service {
 	status, response := httpClient.Delete(httpClient.GetBaseURL() + "/services/" + service.Spec.Id)
 
@@ -45,6 +17,7 @@ func (this ServiceDAO) Delete(service datav1alpha1.Service) datav1alpha1.Service
 	if status == 204 {
 		service.Status = datav1alpha1.ServiceStatus{
 			Message: "DELETED",
+			Code:    200,
 		}
 	} else {
 		var stringValue string
@@ -52,6 +25,7 @@ func (this ServiceDAO) Delete(service datav1alpha1.Service) datav1alpha1.Service
 
 		service.Status = datav1alpha1.ServiceStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
+			Code:    status,
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
 				Body: stringValue,
@@ -62,17 +36,18 @@ func (this ServiceDAO) Delete(service datav1alpha1.Service) datav1alpha1.Service
 	return service
 }
 
-func (this ServiceDAO) Update(service datav1alpha1.Service) datav1alpha1.Service {
-	status, response := httpClient.Patch(httpClient.GetBaseURL()+"/services", service.Spec)
+func (this ServiceDAO) Save(service datav1alpha1.Service) datav1alpha1.Service {
+	status, response := httpClient.Put(httpClient.GetBaseURL()+"/services/"+service.Spec.Name, service.Spec)
 
 	// OK
-	if status == 200 {
+	if status == 200 || status == 201 {
 		var returnValue datav1alpha1.ServiceSpec
 		json.Unmarshal(response, &returnValue)
 
 		service.Spec = returnValue
 		service.Status = datav1alpha1.ServiceStatus{
-			Message: "OK",
+			Message: "SAVED",
+			Code:    200,
 		}
 	} else {
 		var stringValue string
@@ -80,6 +55,7 @@ func (this ServiceDAO) Update(service datav1alpha1.Service) datav1alpha1.Service
 
 		service.Status = datav1alpha1.ServiceStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
+			Code:    status,
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
 				Body: stringValue,
@@ -98,9 +74,6 @@ func (this ServiceDAO) Get(nameOrId string) *datav1alpha1.ServiceSpec {
 		var returnValue datav1alpha1.ServiceSpec
 		json.Unmarshal(response, &returnValue)
 		return &returnValue
-	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
 	}
 
 	return nil

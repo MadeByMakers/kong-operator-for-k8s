@@ -21,10 +21,12 @@ import (
 	"errors"
 
 	"github.com/go-logr/logr"
+	"github.com/prometheus/common/log"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	datav1alpha1 "github.com/MadeByMakers/kong-operator-for-k8s/api/v1alpha1"
@@ -38,9 +40,9 @@ type PluginReconciler struct {
 	Dao daopackage.PluginDAO
 }
 
-//+kubebuilder:rbac:groups=data.data.konghq.com,resources=plugins,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=data.data.konghq.com,resources=plugins/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=data.data.konghq.com,resources=plugins/finalizers,verbs=update
+//+kubebuilder:rbac:groups=data.konghq.com,resources=plugins,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=data.konghq.com,resources=plugins/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=data.konghq.com,resources=plugins/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -57,17 +59,11 @@ func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) 
 	r.Dao = daopackage.PluginDAO{}
 
 	instance := &datav1alpha1.Plugin{}
-	err := r.GetClient().Get(context, req.NamespacedName, instance)
+	err := r.GetInstance(context, req, instance)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			log.Info("Plugin resource not found. Ignoring since object must be deleted.")
-			return ctrl.Result{}, nil
+		if err.Error() == "NOT_FOUND" {
+			return reconcile.Result{}, nil
 		}
-		// Error reading the object - requeue the request.
-		log.Error(err, "Failed to get Memcached.")
 		return ctrl.Result{}, err
 	}
 
@@ -79,17 +75,21 @@ func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) 
 		if !util.HasFinalizer(instance, controllerName) {
 			return reconcile.Result{}, nil
 		}
+
 		err := r.manageCleanUpLogic(instance)
 		if err != nil {
 			log.Error(err, "unable to delete instance", "instance", instance)
 			return r.ManageError(context, instance, err)
 		}
+
 		util.RemoveFinalizer(instance, controllerName)
+
 		err = r.GetClient().Update(context, instance)
 		if err != nil {
 			log.Error(err, "unable to update instance", "instance", instance)
 			return r.ManageError(context, instance, err)
 		}
+
 		return reconcile.Result{}, nil
 	}
 
@@ -99,10 +99,46 @@ func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) 
 	}
 
 	if result != nil {
-		r.GetClient().Update(context, result)
-	}
 
+		err := r.GetInstance(context, req, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		instance.Status.Code = result.Status.Code
+		instance.Status.Message = result.Status.Message
+		instance.Status.Response = result.Status.Response
+
+		r.GetClient().Status().Update(context, instance)
+
+		err = r.GetInstance(context, req, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		if !controllerutil.ContainsFinalizer(instance, controllerName) {
+			controllerutil.AddFinalizer(instance, controllerName)
+		}
+
+		instance.Spec = result.Spec
+		r.GetClient().Update(context, instance)
+
+		return ctrl.Result{}, nil
+	}
 	return r.ManageSuccess(context, instance)
+}
+
+func (r *PluginReconciler) GetInstance(context context.Context, req ctrl.Request, instance *datav1alpha1.Plugin) error {
+	err := r.GetClient().Get(context, req.NamespacedName, instance)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return errors.New("NOT_FOUND")
+		}
+		// Error reading the object - requeue the request.
+		log.Error(err, "Failed to get plugin.")
+		return err
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -132,7 +168,7 @@ func (r *PluginReconciler) IsValid(obj metav1.Object) (bool, error) {
 func (r *PluginReconciler) manageCleanUpLogic(instance *datav1alpha1.Plugin) error {
 	response := r.Dao.Delete(*instance)
 
-	if response.Status.Code == 200 {
+	if response.Status.Code != 200 {
 		return errors.New(response.Status.Message)
 	}
 
@@ -145,10 +181,8 @@ func (r *PluginReconciler) manageOperatorLogic(instance *datav1alpha1.Plugin) (e
 	// DELETE
 	if instance.GetDeletionTimestamp() != nil {
 		return r.manageCleanUpLogic(instance), nil
-	} else if instance.Spec.Id != "" {
-		response = r.Dao.Update(*instance)
 	} else {
-		response = r.Dao.Create(*instance)
+		response = r.Dao.Save(*instance)
 	}
 
 	if response.Status.Code != 200 {

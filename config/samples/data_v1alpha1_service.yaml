@@ -3,4 +3,5 @@ kind: Service
 metadata:
   name: service-sample
 spec:
-  # TODO(user): Add fields here
+  name: service-sample
+  host: hola.com

@@ -2,46 +2,44 @@ package httpClient
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
+	"io"
+	"io/ioutil"
+	"net/http"
 )
 
 func GetBaseURL() string {
-	return "https://soap.entel.cl/api/kong"
+	return "https://kong-kong-admin.kong.svc:8444"
 }
 
 func doRequest(method string, url string, data interface{}) (int, []byte) {
 
-	jsonData := new(bytes.Buffer)
-	json.NewEncoder(jsonData).Encode(data)
+	var body io.Reader = nil
 
-	return 200, jsonData.Bytes()
+	if data != nil {
+		jsonData := new(bytes.Buffer)
+		json.NewEncoder(jsonData).Encode(data)
+		body = jsonData
+	}
 
-	/*
-		var body io.Reader = nil
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	request, error := http.NewRequest(method, url, body)
+	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-		if data != nil {
-			jsonData := new(bytes.Buffer)
-			json.NewEncoder(jsonData).Encode(data)
-			body = jsonData
-		}
+	client := &http.Client{}
+	response, error := client.Do(request)
+	if error != nil {
+		panic(error)
+	}
 
-		request, error := http.NewRequest(method, url, body)
-		request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	defer response.Body.Close()
+	bodyBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		panic(err)
+	}
 
-		client := &http.Client{}
-		response, error := client.Do(request)
-		if error != nil {
-			panic(error)
-		}
-
-		defer response.Body.Close()
-		bodyBytes, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			panic(err)
-		}
-
-		return response.StatusCode, bodyBytes
-	*/
+	return response.StatusCode, bodyBytes
 }
 
 func Delete(url string) (int, []byte) {

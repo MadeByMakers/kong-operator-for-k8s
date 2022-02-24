@@ -1,6 +1,13 @@
 apiVersion: data.konghq.com/v1alpha1
 kind: Route
 metadata:
-  name: route-sample
+  name: route-sample2
 spec:
-  # TODO(user): Add fields here
+  name: route-sample2
+  hosts:
+  - localhost
+  protocols:
+  - https
+  - http
+  service:
+    name: service-sample

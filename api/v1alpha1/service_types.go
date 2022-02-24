@@ -49,6 +49,12 @@ type ServiceStatus struct {
 	Code     int        `json:"code,omitempty"`
 	Message  string     `json:"message,omitempty"`
 	Response HttpStatus `json:"response,omitempty"`
+
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
 
 //+kubebuilder:object:root=true
@@ -61,6 +67,14 @@ type Service struct {
 
 	Spec   ServiceSpec   `json:"spec,omitempty"`
 	Status ServiceStatus `json:"status,omitempty"`
+}
+
+func (m *Service) GetConditions() []metav1.Condition {
+	return m.Status.Conditions
+}
+
+func (m *Service) SetConditions(conditions []metav1.Condition) {
+	m.Status.Conditions = conditions
 }
 
 //+kubebuilder:object:root=true

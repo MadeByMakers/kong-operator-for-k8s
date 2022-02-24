@@ -10,34 +10,6 @@ import (
 
 type RouteDAO struct{}
 
-func (this RouteDAO) Create(route datav1alpha1.Route) datav1alpha1.Route {
-	status, response := httpClient.Post(httpClient.GetBaseURL()+"/routes", route.Spec)
-
-	// OK
-	if status == 201 {
-		var returnValue datav1alpha1.RouteSpec
-		json.Unmarshal(response, &returnValue)
-
-		route.Spec = returnValue
-		route.Status = datav1alpha1.RouteStatus{
-			Message: "OK",
-		}
-	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
-
-		route.Status = datav1alpha1.RouteStatus{
-			Message: "ERROR (" + strconv.Itoa(status) + ")",
-			Response: datav1alpha1.HttpStatus{
-				Code: status,
-				Body: stringValue,
-			},
-		}
-	}
-
-	return route
-}
-
 func (this RouteDAO) Delete(route datav1alpha1.Route) datav1alpha1.Route {
 	status, response := httpClient.Delete(httpClient.GetBaseURL() + "/routes/" + route.Spec.Id)
 
@@ -45,6 +17,7 @@ func (this RouteDAO) Delete(route datav1alpha1.Route) datav1alpha1.Route {
 	if status == 204 {
 		route.Status = datav1alpha1.RouteStatus{
 			Message: "DELETED",
+			Code:    200,
 		}
 	} else {
 		var stringValue string
@@ -52,6 +25,7 @@ func (this RouteDAO) Delete(route datav1alpha1.Route) datav1alpha1.Route {
 
 		route.Status = datav1alpha1.RouteStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
+			Code:    status,
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
 				Body: stringValue,
@@ -62,17 +36,40 @@ func (this RouteDAO) Delete(route datav1alpha1.Route) datav1alpha1.Route {
 	return route
 }
 
-func (this RouteDAO) Update(route datav1alpha1.Route) datav1alpha1.Route {
-	status, response := httpClient.Patch(httpClient.GetBaseURL()+"/routes", route.Spec)
+func (this RouteDAO) Save(route datav1alpha1.Route) datav1alpha1.Route {
+
+	if route.Spec.Service.Id == "" && route.Spec.Service.Name != "" {
+		service := ServiceDAO{}.Get(route.Spec.Service.Name)
+
+		if service != nil {
+			route.Spec.Service.Id = service.Id
+		} else {
+			route.Status = datav1alpha1.RouteStatus{
+				Message: "Service '" + route.Spec.Service.Name + "' not found",
+				Code:    404,
+				Response: datav1alpha1.HttpStatus{
+					Code: 404,
+				},
+			}
+
+			return route
+		}
+
+	}
+
+	status, response := httpClient.Put(httpClient.GetBaseURL()+"/routes/"+route.Spec.Name, route.Spec)
 
 	// OK
-	if status == 200 {
+	if status == 200 || status == 201 {
 		var returnValue datav1alpha1.RouteSpec
 		json.Unmarshal(response, &returnValue)
 
+		returnValue.Service.Name = route.Spec.Service.Name
+
 		route.Spec = returnValue
 		route.Status = datav1alpha1.RouteStatus{
-			Message: "OK",
+			Message: "SAVED",
+			Code:    200,
 		}
 	} else {
 		var stringValue string
@@ -80,6 +77,7 @@ func (this RouteDAO) Update(route datav1alpha1.Route) datav1alpha1.Route {
 
 		route.Status = datav1alpha1.RouteStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
+			Code:    status,
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
 				Body: stringValue,
@@ -98,9 +96,6 @@ func (this RouteDAO) Get(nameOrId string) *datav1alpha1.RouteSpec {
 		var returnValue datav1alpha1.RouteSpec
 		json.Unmarshal(response, &returnValue)
 		return &returnValue
-	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
 	}
 
 	return nil
@@ -114,9 +109,6 @@ func (this RouteDAO) GetAll() []datav1alpha1.RouteSpec {
 		var returnValue []datav1alpha1.RouteSpec
 		json.Unmarshal(response, &returnValue)
 		return returnValue
-	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
 	}
 
 	return nil

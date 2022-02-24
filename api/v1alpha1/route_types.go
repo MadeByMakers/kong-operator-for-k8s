@@ -35,6 +35,7 @@ type RouteSpec struct {
 
 	Headers map[string]string `json:"headers,omitempty"`
 
+	Service                    ObjectId `json:"service,omitempty"`
 	Path_handling              string   `json:"path_handling,omitempty"`
 	Https_redirect_status_code int      `json:"https_redirect_status_code,omitempty"`
 	Regex_priority             int      `json:"regex_priority,omitempty"`
@@ -54,6 +55,12 @@ type RouteStatus struct {
 	Code     int        `json:"code,omitempty"`
 	Message  string     `json:"message,omitempty"`
 	Response HttpStatus `json:"response,omitempty"`
+
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
 
 //+kubebuilder:object:root=true
@@ -66,6 +73,14 @@ type Route struct {
 
 	Spec   RouteSpec   `json:"spec,omitempty"`
 	Status RouteStatus `json:"status,omitempty"`
+}
+
+func (m *Route) GetConditions() []metav1.Condition {
+	return m.Status.Conditions
+}
+
+func (m *Route) SetConditions(conditions []metav1.Condition) {
+	m.Status.Conditions = conditions
 }
 
 //+kubebuilder:object:root=true

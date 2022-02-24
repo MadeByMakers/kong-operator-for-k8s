@@ -1,6 +1,28 @@
 apiVersion: data.konghq.com/v1alpha1
 kind: Plugin
 metadata:
-  name: plugin-sample
+  name: cors-for-sample-service
 spec:
-  # TODO(user): Add fields here
+  name: cors
+  route:
+    name: route-sample2
+  config: |
+    {
+      "preflight_continue": false,
+      "max_age": null,
+      "methods": [
+        "GET",
+        "HEAD",
+        "PUT",
+        "PATCH",
+        "POST",
+        "DELETE",
+        "OPTIONS",
+        "TRACE",
+        "CONNECT"
+      ],
+      "headers": null,
+      "credentials": false,
+      "exposed_headers": null,
+      "origins": null
+    }
