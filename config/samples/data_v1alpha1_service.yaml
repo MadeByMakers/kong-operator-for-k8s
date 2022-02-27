@@ -4,4 +4,4 @@ metadata:
   name: service-sample
 spec:
   name: service-sample
-  host: hola.com
+  host: hello.com

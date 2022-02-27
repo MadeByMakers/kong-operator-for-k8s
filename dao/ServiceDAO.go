@@ -20,15 +20,12 @@ func (this ServiceDAO) Delete(service datav1alpha1.Service) datav1alpha1.Service
 			Code:    200,
 		}
 	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
-
 		service.Status = datav1alpha1.ServiceStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Code:    status,
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
-				Body: stringValue,
+				Body: string(response),
 			},
 		}
 	}
@@ -36,7 +33,7 @@ func (this ServiceDAO) Delete(service datav1alpha1.Service) datav1alpha1.Service
 	return service
 }
 
-func (this ServiceDAO) Save(service datav1alpha1.Service) datav1alpha1.Service {
+func (this ServiceDAO) Save(service *datav1alpha1.Service) {
 	status, response := httpClient.Put(httpClient.GetBaseURL()+"/services/"+service.Spec.Name, service.Spec)
 
 	// OK
@@ -50,20 +47,15 @@ func (this ServiceDAO) Save(service datav1alpha1.Service) datav1alpha1.Service {
 			Code:    200,
 		}
 	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
-
 		service.Status = datav1alpha1.ServiceStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Code:    status,
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
-				Body: stringValue,
+				Body: string(response),
 			},
 		}
 	}
-
-	return service
 }
 
 func (this ServiceDAO) Get(nameOrId string) *datav1alpha1.ServiceSpec {
@@ -87,9 +79,6 @@ func (this ServiceDAO) GetAll() []datav1alpha1.ServiceSpec {
 		var returnValue []datav1alpha1.ServiceSpec
 		json.Unmarshal(response, &returnValue)
 		return returnValue
-	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
 	}
 
 	return nil

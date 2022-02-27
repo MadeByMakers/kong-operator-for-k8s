@@ -40,8 +40,10 @@ type RouteSpec struct {
 	Https_redirect_status_code int      `json:"https_redirect_status_code,omitempty"`
 	Regex_priority             int      `json:"regex_priority,omitempty"`
 	Methods                    []string `json:"methods,omitempty"`
-	Split_path                 bool     `json:"split_path,omitempty"`
+	Strip_path                 bool     `json:"strip_path,omitempty"`
 	Preserve_host              bool     `json:"preserve_host,omitempty"`
+	Request_buffering          bool     `json:"request_buffering,omitempty"`
+	Response_buffering         bool     `json:"response_buffering,omitempty"`
 
 	Protocols    []string `json:"protocols,omitempty"`
 	Snis         []string `json:"snis,omitempty"`

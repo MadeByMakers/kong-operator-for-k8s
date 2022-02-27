@@ -36,7 +36,7 @@ IMAGE_TAG_BASE ?= konghq.com/new
 BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
 
 # Image URL to use all building/pushing image targets
-IMG ?= madebymakers/kong-operator:0.0.37
+IMG ?= madebymakers/kong-operator:0.0.59
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.22
 

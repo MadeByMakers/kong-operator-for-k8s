@@ -20,15 +20,12 @@ func (this RouteDAO) Delete(route datav1alpha1.Route) datav1alpha1.Route {
 			Code:    200,
 		}
 	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
-
 		route.Status = datav1alpha1.RouteStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Code:    status,
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
-				Body: stringValue,
+				Body: string(response),
 			},
 		}
 	}
@@ -36,7 +33,7 @@ func (this RouteDAO) Delete(route datav1alpha1.Route) datav1alpha1.Route {
 	return route
 }
 
-func (this RouteDAO) Save(route datav1alpha1.Route) datav1alpha1.Route {
+func (this RouteDAO) Save(route *datav1alpha1.Route) {
 
 	if route.Spec.Service.Id == "" && route.Spec.Service.Name != "" {
 		service := ServiceDAO{}.Get(route.Spec.Service.Name)
@@ -52,7 +49,7 @@ func (this RouteDAO) Save(route datav1alpha1.Route) datav1alpha1.Route {
 				},
 			}
 
-			return route
+			return
 		}
 
 	}
@@ -72,20 +69,15 @@ func (this RouteDAO) Save(route datav1alpha1.Route) datav1alpha1.Route {
 			Code:    200,
 		}
 	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
-
 		route.Status = datav1alpha1.RouteStatus{
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Code:    status,
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
-				Body: stringValue,
+				Body: string(response),
 			},
 		}
 	}
-
-	return route
 }
 
 func (this RouteDAO) Get(nameOrId string) *datav1alpha1.RouteSpec {

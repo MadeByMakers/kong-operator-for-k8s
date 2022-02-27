@@ -32,15 +32,15 @@ type ObjectId struct {
 type PluginSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Id        string      `json:"id,omitempty"`
-	Name      string      `json:"name,omitempty"`
-	Config    interface{} `json:"config,omitempty"`
-	Tags      []string    `json:"tags,omitempty"`
-	Route     ObjectId    `json:"route,omitempty"`
-	Service   ObjectId    `json:"service,omitempty"`
-	Protocols []string    `json:"protocols,omitempty"`
-	Consumer  []string    `json:"consumer,omitempty"`
-	Enabled   bool        `json:"enabled,omitempty"`
+	Id        string    `json:"id,omitempty"`
+	Name      string    `json:"name,omitempty"`
+	Config    string    `json:"config,omitempty"`
+	Tags      []string  `json:"tags,omitempty"`
+	Route     *ObjectId `json:"route,omitempty"`
+	Service   *ObjectId `json:"service,omitempty"`
+	Protocols []string  `json:"protocols,omitempty"`
+	Consumer  []string  `json:"consumer,omitempty"`
+	Enabled   bool      `json:"enabled,omitempty"`
 }
 
 // PluginStatus defines the observed state of Plugin

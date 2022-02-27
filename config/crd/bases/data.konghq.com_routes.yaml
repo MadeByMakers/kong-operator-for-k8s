@@ -74,6 +74,10 @@ spec:
                 type: array
               regex_priority:
                 type: integer
+              request_buffering:
+                type: boolean
+              response_buffering:
+                type: boolean
               service:
                 properties:
                   id:
@@ -85,7 +89,7 @@ spec:
                 items:
                   type: string
                 type: array
-              split_path:
+              strip_path:
                 type: boolean
               tags:
                 items:

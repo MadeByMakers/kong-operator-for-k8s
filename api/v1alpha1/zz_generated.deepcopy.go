@@ -123,8 +123,16 @@ func (in *PluginSpec) DeepCopyInto(out *PluginSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	out.Route = in.Route
-	out.Service = in.Service
+	if in.Route != nil {
+		in, out := &in.Route, &out.Route
+		*out = new(ObjectId)
+		**out = **in
+	}
+	if in.Service != nil {
+		in, out := &in.Service, &out.Service
+		*out = new(ObjectId)
+		**out = **in
+	}
 	if in.Protocols != nil {
 		in, out := &in.Protocols, &out.Protocols
 		*out = make([]string, len(*in))

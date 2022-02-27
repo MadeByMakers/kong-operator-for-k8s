@@ -43,6 +43,8 @@ type PluginReconciler struct {
 //+kubebuilder:rbac:groups=data.konghq.com,resources=plugins,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=data.konghq.com,resources=plugins/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=data.konghq.com,resources=plugins/finalizers,verbs=update
+//+kubebuilder:rbac:groups=*,resources=events,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -54,7 +56,7 @@ type PluginReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) (ctrl.Result, error) {
-	const controllerName = "PluginController"
+	const controllerName = "plugin.data.konghq.com"
 	log := r.Log.WithValues("Plugin", req.NamespacedName)
 	r.Dao = daopackage.PluginDAO{}
 
@@ -77,10 +79,6 @@ func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) 
 		}
 
 		err := r.manageCleanUpLogic(instance)
-		if err != nil {
-			log.Error(err, "unable to delete instance", "instance", instance)
-			return r.ManageError(context, instance, err)
-		}
 
 		util.RemoveFinalizer(instance, controllerName)
 
@@ -93,39 +91,28 @@ func (r *PluginReconciler) Reconcile(context context.Context, req ctrl.Request) 
 		return reconcile.Result{}, nil
 	}
 
-	err, result := r.manageOperatorLogic(instance)
+	err = r.manageOperatorLogic(instance)
 	if err != nil {
 		return r.ManageError(context, instance, err)
 	}
 
-	if result != nil {
+	r.GetClient().Status().Update(context, instance)
 
-		err := r.GetInstance(context, req, instance)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+	spec := instance.Spec
 
-		instance.Status.Code = result.Status.Code
-		instance.Status.Message = result.Status.Message
-		instance.Status.Response = result.Status.Response
-
-		r.GetClient().Status().Update(context, instance)
-
-		err = r.GetInstance(context, req, instance)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		if !controllerutil.ContainsFinalizer(instance, controllerName) {
-			controllerutil.AddFinalizer(instance, controllerName)
-		}
-
-		instance.Spec = result.Spec
-		r.GetClient().Update(context, instance)
-
-		return ctrl.Result{}, nil
+	err = r.GetInstance(context, req, instance)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
-	return r.ManageSuccess(context, instance)
+
+	if !controllerutil.ContainsFinalizer(instance, controllerName) {
+		controllerutil.AddFinalizer(instance, controllerName)
+	}
+
+	instance.Spec = spec
+	r.GetClient().Update(context, instance)
+
+	return ctrl.Result{}, nil
 }
 
 func (r *PluginReconciler) GetInstance(context context.Context, req ctrl.Request, instance *datav1alpha1.Plugin) error {
@@ -175,19 +162,18 @@ func (r *PluginReconciler) manageCleanUpLogic(instance *datav1alpha1.Plugin) err
 	return nil
 }
 
-func (r *PluginReconciler) manageOperatorLogic(instance *datav1alpha1.Plugin) (error, *datav1alpha1.Plugin) {
-	var response datav1alpha1.Plugin
+func (r *PluginReconciler) manageOperatorLogic(instance *datav1alpha1.Plugin) error {
 
 	// DELETE
 	if instance.GetDeletionTimestamp() != nil {
-		return r.manageCleanUpLogic(instance), nil
+		return r.manageCleanUpLogic(instance)
 	} else {
-		response = r.Dao.Save(*instance)
+		r.Dao.Save(instance)
 	}
 
-	if response.Status.Code != 200 {
-		return errors.New(response.Status.Message), nil
+	if instance.Status.Code != 200 {
+		return errors.New(instance.Status.Message)
 	}
 
-	return nil, &response
+	return nil
 }

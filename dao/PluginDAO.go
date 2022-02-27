@@ -6,6 +6,7 @@ import (
 
 	datav1alpha1 "github.com/MadeByMakers/kong-operator-for-k8s/api/v1alpha1"
 	httpClient "github.com/MadeByMakers/kong-operator-for-k8s/util"
+	"github.com/google/uuid"
 )
 
 type PluginDAO struct{}
@@ -20,15 +21,12 @@ func (this PluginDAO) Delete(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
 			Message: "DELETED",
 		}
 	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
-
 		plugin.Status = datav1alpha1.PluginStatus{
 			Code:    status,
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
-				Body: stringValue,
+				Body: string(response),
 			},
 		}
 	}
@@ -36,10 +34,13 @@ func (this PluginDAO) Delete(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
 	return plugin
 }
 
-func (this PluginDAO) Save(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
-	status, response := httpClient.Put(httpClient.GetBaseURL()+"/plugins/"+plugin.Spec.Name, plugin.Spec)
+func (this PluginDAO) Save(plugin *datav1alpha1.Plugin) {
 
-	if plugin.Spec.Service.Name != "" {
+	if plugin.Spec.Id == "" {
+		plugin.Spec.Id = uuid.New().String()
+	}
+
+	if plugin.Spec.Service != nil && plugin.Spec.Service.Name != "" && plugin.Spec.Service.Id == "" {
 		service := ServiceDAO{}.Get(plugin.Spec.Service.Name)
 
 		if service != nil {
@@ -53,11 +54,11 @@ func (this PluginDAO) Save(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
 				},
 			}
 
-			return plugin
+			return
 		}
 	}
 
-	if plugin.Spec.Route.Name != "" {
+	if plugin.Spec.Route != nil && plugin.Spec.Route.Name != "" && plugin.Spec.Route.Id == "" {
 		route := RouteDAO{}.Get(plugin.Spec.Route.Name)
 
 		if route != nil {
@@ -71,43 +72,40 @@ func (this PluginDAO) Save(plugin datav1alpha1.Plugin) datav1alpha1.Plugin {
 				},
 			}
 
-			return plugin
+			return
 		}
 	}
 
+	status, response := httpClient.Put(httpClient.GetBaseURL()+"/plugins/"+plugin.Spec.Id, Plugin4Rest{}.FromSpec(plugin.Spec))
+
 	// OK
-	if status == 200 || status == 201 {
-		var returnValue datav1alpha1.PluginSpec
+	if status == 200 {
+		var returnValue Plugin4Rest
 		json.Unmarshal(response, &returnValue)
 
-		if plugin.Spec.Service.Name != "" {
+		if plugin.Spec.Service != nil && plugin.Spec.Service.Name != "" {
 			returnValue.Service.Name = plugin.Spec.Service.Name
 		}
 
-		if plugin.Spec.Route.Name != "" {
+		if plugin.Spec.Route != nil && plugin.Spec.Route.Name != "" {
 			returnValue.Route.Name = plugin.Spec.Route.Name
 		}
 
-		plugin.Spec = returnValue
+		plugin.Spec = returnValue.ToSpec()
 		plugin.Status = datav1alpha1.PluginStatus{
 			Code:    200,
 			Message: "SAVED",
 		}
 	} else {
-		var stringValue string
-		json.Unmarshal(response, &stringValue)
-
 		plugin.Status = datav1alpha1.PluginStatus{
 			Code:    status,
 			Message: "ERROR (" + strconv.Itoa(status) + ")",
 			Response: datav1alpha1.HttpStatus{
 				Code: status,
-				Body: stringValue,
+				Body: string(response),
 			},
 		}
 	}
-
-	return plugin
 }
 
 func (this PluginDAO) Get(nameOrId string) *datav1alpha1.PluginSpec {
@@ -115,9 +113,11 @@ func (this PluginDAO) Get(nameOrId string) *datav1alpha1.PluginSpec {
 
 	// OK
 	if status == 200 {
-		var returnValue datav1alpha1.PluginSpec
+		var returnValue Plugin4Rest
 		json.Unmarshal(response, &returnValue)
-		return &returnValue
+		retorno := returnValue.ToSpec()
+
+		return &retorno
 	}
 
 	return nil
